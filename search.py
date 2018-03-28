@@ -23,12 +23,12 @@ def getDocNum(mapFile):
 
     return docIDNumMap
 
-def getTermOccurance(term,lexiconFile = "lexicon",invertedListFile = "invlists",mapFile = "map"):
 
-    lexiconPositionMap = getLexicon(lexiconFile )
+def getTermOccurance(term, lexiconFile="lexicon", invertedListFile="invlists", mapFile="map"):
+    lexiconPositionMap = getLexicon(lexiconFile)
 
     if term not in lexiconPositionMap:
-        print("Cannot find term:",term)
+        print("Cannot find term:", term)
         return
 
     print(term)
@@ -45,13 +45,14 @@ def getTermOccurance(term,lexiconFile = "lexicon",invertedListFile = "invlists",
 
     print(listLength)
 
-    while listLength>0:
+    while listLength > 0:
         docID = int.from_bytes(f.read(4), byteorder='big')
-        print(docIDNumMap[docID], end='', flush=True)
-        f.read(4)
+        print(docIDNumMap[docID].rstrip(), end=" ")
+        print(str(int.from_bytes(f.read(4), byteorder='big')))
         listLength -= 1
     print("------------------")
-    
+
+
 if __name__ == '__main__':
     termList = sys.argv[4:]
 
