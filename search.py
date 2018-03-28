@@ -54,6 +54,7 @@ def getTermOccurance(term,lexiconFile = "lexicon",invertedListFile = "invlists",
 if __name__ == '__main__':
     termList = sys.argv[4:]
 
+
     for term in termList:
         getTermOccurance(term,sys.argv[1],sys.argv[2],sys.argv[3])
 
