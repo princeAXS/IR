@@ -28,7 +28,7 @@ def getTermOccurance(term,lexiconFile = "lexicon",invertedListFile = "invlists",
     lexiconPositionMap = getLexicon(lexiconFile )
 
     if term not in lexiconPositionMap:
-        print("Cannot find term!!")
+        print("Cannot find term:",term)
         return
 
     print(term)
@@ -47,10 +47,11 @@ def getTermOccurance(term,lexiconFile = "lexicon",invertedListFile = "invlists",
 
     while listLength>0:
         docID = int.from_bytes(f.read(4), byteorder='big')
-        print(docIDNumMap[docID])
+        print(docIDNumMap[docID], end='', flush=True)
         f.read(4)
         listLength -= 1
-
+    print("------------------")
+    
 if __name__ == '__main__':
     termList = sys.argv[4:]
 
