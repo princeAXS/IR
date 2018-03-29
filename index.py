@@ -13,7 +13,6 @@
 
 import re
 import argparse
-from check_time import chktm
 from normalise import normalise
 
 INT_SIZE = 32 # -bits in an integer when saving the inverted lists
@@ -56,8 +55,6 @@ def indexify(a_fn, stoplist, a_print, punc):
             # Could use the re.ignore_case flag, but why bother?
             line = line.strip().lower()
 
-            chktm(ref='read', count=True, surpress=True)
-
             # ========== Closing Tags ==========
             # Assume TEXT and HEADLINE tags never intersect
             # Close of body
@@ -69,7 +66,6 @@ def indexify(a_fn, stoplist, a_print, punc):
 
             # Finished with this document
             elif state == PARSING and check_close(r_doc, line):
-                chktm(store='killdoc', surpress=True)
                 # Done with this doc - can finalise frequencies
                 # Store the doc id/term frequencies in the lexicon dict
                 for w, ft in doc_terms.items():
@@ -77,7 +73,6 @@ def indexify(a_fn, stoplist, a_print, punc):
 
                 doc_terms = None
                 state = NO_DOC
-                chktm(ref='killdoc', count=True, surpress=True)
 
             # ========== Term text ==========
             # It's a line to term-ify (term-inate, even :P)
@@ -88,11 +83,8 @@ def indexify(a_fn, stoplist, a_print, punc):
 
                 # Munch anything but numbers, letters, and spaces
                 # We already case folded earlier - no need to do it again
-                chktm(store='norm', surpress=True)
-                chktm(store='norm_call', surpress=True)
                 t = normalise(line, punctuation=punc, case=False, stops=stoplist)
-                chktm(ref='norm', surpress=True, count=True)
-                chktm(store='term', surpress=True)
+
                 for w in t:
                     # Increase (or add) in-doc frequency for this term
                     if w in doc_terms:
@@ -106,16 +98,13 @@ def indexify(a_fn, stoplist, a_print, punc):
                         # Print it if that flag's flagged
                         if a_print:
                             print(w)
-                chktm(ref='term', surpress=True, count=True)
 
             # ========== Opening Tags ==========
             # Start of new document
             elif state == NO_DOC and check_tag(r_doc, line):
-                chktm(store='newdoc', surpress=True)
                 doc_terms = {}
                 current_id += 1
                 state = PARSING
-                chktm(ref='newdoc', count=True, surpress=True)
 
             # Document UID
             elif state == PARSING and check_tag(r_doc_num, line, is_regex=True):
@@ -132,8 +121,6 @@ def indexify(a_fn, stoplist, a_print, punc):
             elif state == PARSING and check_tag(r_body, line):
                 state = TEXT
 
-            chktm(store='read', surpress=True)
-
 """
 Checks if the string is an opening tag for the passed tag
 """
@@ -143,15 +130,11 @@ def check_tag(comparitor, line, is_regex=False):
     comparitor = '<' + comparitor + '>'
 
     if is_regex:
-        chktm(store='reg', surpress=True)
         # Python internally caches regex objects, so no need to re.compile()
         last_match = re.match(comparitor, line)
-        chktm(ref='reg', count=True, surpress=True)
     else:
-        chktm(store='strcmp', surpress=True)
         # Simple string comparison
         last_match = (comparitor == line)
-        chktm(ref='strcmp', count=True, surpress=True)
 
     return last_match
 
@@ -228,48 +211,11 @@ if __name__ == '__main__':
                         help='Output run times')
     args = parser.parse_args()
 
-    # Track how long it takes to index and write to disk
-    chktm(surpress=True, store='main') # Init timer
-    chktm.default_sup = not args.verbose
-
 
 
     # Actually do stuff
     indexify(args.sourcefile, open_stoplist(args.stoplist), args.print, r'[^\w\d\ ]')
 
-
-
-    # Recount timers
-    _n = chktm(what='normalising', ref='norm', count=False)
-    chktm('     n_call', ref='norm_call', count=False)
-    chktm('     n_case', ref='n_case', count=False)
-    chktm('     n_hyph', ref='n_hyp', count=False)
-    chktm('     n_punc', ref='n_pun', count=False)
-    chktm('     n_stop', ref='n_stop', count=False)
-
-    if args.verbose:
-        print()
-
-    _t  = chktm(what='terms', ref='term', count=False)
-    if args.verbose and False:
-        print('{}: {}\n'.format('norm+term', _n+_t))
-
-    _r  = chktm(what='read', ref='read', count=False, surpress=True)
-    _nd = chktm(what='new doc', ref='newdoc', count=False, surpress=True)
-    _kd = chktm(what='close doc', ref='killdoc', count=False, surpress=True)
-    if args.verbose:
-        print('{}: {}\n'.format('read+doc_ops', _r+_nd+_kd))
-
-    chktm('regexes', ref='reg', count=False)
-    chktm('str comps', ref='strcmp', count=False)
-
-    if args.verbose:
-        print()
-
-    chktm('index', ref='main', store='main')
-
     # Save the auxiliary files
     write_map(doc_map, 'map')
     write_lexicon_invs(lexicon, 'lexicon', 'invlists')
-
-    chktm('write', ref='main', store='main')
