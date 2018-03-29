@@ -207,8 +207,6 @@ if __name__ == '__main__':
                         help='Print each new term as it\'s found')
     parser.add_argument('-s', '--stoplist', type=str,
                         help='A path to a file containing a list of stopwords')
-    parser.add_argument('-v', '--verbose', action='store_true',
-                        help='Output run times')
     args = parser.parse_args()
 
 
