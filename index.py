@@ -13,20 +13,19 @@
 
 import re
 import argparse
+from check_time import chktm
 from normalise import normalise
 
 INT_SIZE = 32 # -bits in an integer when saving the inverted lists
 
 # ===================
-# Regexes
+# Tag names for comparison/regexing
 
-r_doc       = r'doc'
+r_doc       = 'doc'
 r_doc_num   = r'docno>\s*(.*?)\s*<\/docno'
 
-r_head      = r'headline'
-r_body      = r'text'
-
-r_tag       = r'[\/\w]+'
+r_head      = 'headline'
+r_body      = 'text'
 
 # ===================
 # State enums, such that they are
@@ -37,15 +36,14 @@ NO_DOC, PARSING, HEAD, TEXT = range(1, 5)
 # ===================
 # Working variables
 
-#stoplist    = None  # To be fetched
-doc_map     = {}    # Map between document ids and <DOCNO>s
+doc_map     = []    # 'Map' between document ids and <DOCNO>s
 last_match  = None  # global - gets bounced between indexify() and regex check funcs
 lexicon     = {}
 
 # ===================
 
 
-def indexify(a_fn, stoplist, a_print):
+def indexify(a_fn, stoplist, a_print, punc):
     global last_match
 
     current_id  = -1 # Will start at 0 due to being incremented every new document
@@ -58,58 +56,43 @@ def indexify(a_fn, stoplist, a_print):
             # Could use the re.ignore_case flag, but why bother?
             line = line.strip().lower()
 
-            # ========== Opening Tags ==========
-            # Start of new document
-            if check_tag(r_doc, line):
-                doc_terms = {}
-                current_id += 1
-                state = PARSING
-
-            elif state == NO_DOC:
-                continue # We're outside a <DOC> tag - do nothing. This probably never occurs
-
-            # Document UID
-            elif check_tag(r_doc_num, line):
-                # Add entry to the map
-                doc_map[current_id] = last_match.group(1)
-
-            # Headline
-            elif check_tag(r_head, line):
-                state = HEAD # Start adding terms to the document terms list
-            # Document body
-            elif check_tag(r_body, line):
-                state = TEXT # Start adding terms to the document terms list
-
+            chktm(ref='read', count=True, surpress=True)
 
             # ========== Closing Tags ==========
             # Assume TEXT and HEADLINE tags never intersect
             # Close of body
-            elif check_close(r_body, line):
+            if state == TEXT and check_close(r_body, line):
                 state = PARSING
             # Close of headline
-            elif check_close(r_head, line):
+            elif state == HEAD and check_close(r_head, line):
                 state = PARSING
 
             # Finished with this document
-            elif check_close(r_doc, line):
+            elif state == PARSING and check_close(r_doc, line):
+                chktm(store='killdoc', surpress=True)
                 # Done with this doc - can finalise frequencies
                 # Store the doc id/term frequencies in the lexicon dict
                 for w, ft in doc_terms.items():
-                    lexicon[w].append((current_id, ft))
+                    lexicon[w].append( (current_id, ft) )
 
                 doc_terms = None
                 state = NO_DOC
+                chktm(ref='killdoc', count=True, surpress=True)
 
             # ========== Term text ==========
             # It's a line to term-ify (term-inate, even :P)
-            elif (state == TEXT or state == HEAD):
-                if check_tag(r_tag, line):
+            elif ((state == TEXT) or (state == HEAD)):
+                if line.startswith('<') and line.endswith('>'):
                     # It's a markup tag - we don't want to index these
                     continue
 
                 # Munch anything but numbers, letters, and spaces
                 # We already case folded earlier - no need to do it again
-                t = normalise(line, punctuation=r'[^\w\d\ ]', case=False, stops=stoplist)
+                chktm(store='norm', surpress=True)
+                chktm(store='norm_call', surpress=True)
+                t = normalise(line, punctuation=punc, case=False, stops=stoplist)
+                chktm(ref='norm', surpress=True, count=True)
+                chktm(store='term', surpress=True)
                 for w in t:
                     # Increase (or add) in-doc frequency for this term
                     if w in doc_terms:
@@ -123,22 +106,61 @@ def indexify(a_fn, stoplist, a_print):
                         # Print it if that flag's flagged
                         if a_print:
                             print(w)
+                chktm(ref='term', surpress=True, count=True)
+
+            # ========== Opening Tags ==========
+            # Start of new document
+            elif state == NO_DOC and check_tag(r_doc, line):
+                chktm(store='newdoc', surpress=True)
+                doc_terms = {}
+                current_id += 1
+                state = PARSING
+                chktm(ref='newdoc', count=True, surpress=True)
+
+            # Document UID
+            elif state == PARSING and check_tag(r_doc_num, line, is_regex=True):
+                # Check we don't break the id->doc_map index relationship
+                assert len(doc_map) == current_id
+                # Add entry to the map
+                doc_map.append(last_match.group(1))
+
+            # Both these mean start adding terms to the document terms list
+            # Headline
+            elif state == PARSING and check_tag(r_head, line):
+                state = HEAD
+            # Document body
+            elif state == PARSING and check_tag(r_body, line):
+                state = TEXT
+
+            chktm(store='read', surpress=True)
 
 """
-Checks if the string is an opening tag for the passed regex
+Checks if the string is an opening tag for the passed tag
 """
-def check_tag(reg, line):
+def check_tag(comparitor, line, is_regex=False):
     global last_match
-    # Python internally caches regexe objects, so no need to re.compile()
-    last_match = re.match(r'<' + reg + r'>', line)
+
+    comparitor = '<' + comparitor + '>'
+
+    if is_regex:
+        chktm(store='reg', surpress=True)
+        # Python internally caches regex objects, so no need to re.compile()
+        last_match = re.match(comparitor, line)
+        chktm(ref='reg', count=True, surpress=True)
+    else:
+        chktm(store='strcmp', surpress=True)
+        # Simple string comparison
+        last_match = (comparitor == line)
+        chktm(ref='strcmp', count=True, surpress=True)
+
     return last_match
 
 """
 Checks if the string is a closing tag for the passed regex
 """
-def check_close(reg, line):
+def check_close(reg, line, is_regex=False):
     # Lazy code deduplication
-    return check_tag(r'/' + reg, line)
+    return check_tag(r'/' + reg, line, is_regex=is_regex)
 
 """
 Opens a stoplist stored on disk and returns it as a list of strings
@@ -146,11 +168,12 @@ Opens a stoplist stored on disk and returns it as a list of strings
 def open_stoplist(sfn):
     if sfn is None:
         # No stoplist to read - return a blank
-        return []
+        return set()
 
     with open(sfn, 'r') as sf:
-        # Read all words (strip them of whitespace) and return the list
-        sl = [w.strip() for w in sf]
+        # Read all words (strip them of whitespace) and return the set
+        # Set because order and identity don't matter, and there are good time gains to be had
+        sl = {w.strip() for w in sf}
         return sl
 
 """
@@ -161,7 +184,7 @@ Each line has two items
 """
 def write_map(omap, ofn):
     with open(ofn, 'w') as of:
-        for (did, dno) in omap.items():
+        for (did, dno) in enumerate(omap):
             of.write('{} {}\n'.format(did, dno))
 
 
@@ -206,21 +229,47 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # Track how long it takes to index and write to disk
-    v = args.verbose
-    if v:
-        from time import time
-        t_s = time()
+    chktm(surpress=True, store='main') # Init timer
+    chktm.default_sup = not args.verbose
+
+
 
     # Actually do stuff
-    indexify(args.sourcefile, open_stoplist(args.stoplist), args.print)
+    indexify(args.sourcefile, open_stoplist(args.stoplist), args.print, r'[^\w\d\ ]')
 
-    if v:
-        t_i = time()
+
+
+    # Recount timers
+    _n = chktm(what='normalising', ref='norm', count=False)
+    chktm('     n_call', ref='norm_call', count=False)
+    chktm('     n_case', ref='n_case', count=False)
+    chktm('     n_hyph', ref='n_hyp', count=False)
+    chktm('     n_punc', ref='n_pun', count=False)
+    chktm('     n_stop', ref='n_stop', count=False)
+
+    if args.verbose:
+        print()
+
+    _t  = chktm(what='terms', ref='term', count=False)
+    if args.verbose and False:
+        print('{}: {}\n'.format('norm+term', _n+_t))
+
+    _r  = chktm(what='read', ref='read', count=False, surpress=True)
+    _nd = chktm(what='new doc', ref='newdoc', count=False, surpress=True)
+    _kd = chktm(what='close doc', ref='killdoc', count=False, surpress=True)
+    if args.verbose:
+        print('{}: {}\n'.format('read+doc_ops', _r+_nd+_kd))
+
+    chktm('regexes', ref='reg', count=False)
+    chktm('str comps', ref='strcmp', count=False)
+
+    if args.verbose:
+        print()
+
+    chktm('index', ref='main', store='main')
 
     # Save the auxiliary files
     write_map(doc_map, 'map')
     write_lexicon_invs(lexicon, 'lexicon', 'invlists')
 
-    if v:
-        t_w = time()
-        print('{}s to index\n{}s to write to disk'.format(t_i - t_s, t_w - t_s))
+    chktm('write', ref='main', store='main')
