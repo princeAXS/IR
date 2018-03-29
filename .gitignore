@@ -13,6 +13,7 @@ latimes*
 # Temp files/dirs #
 ###################
 __pycache__/
+.idea/
 *.log
 *.png
 *.zip
