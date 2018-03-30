@@ -41,6 +41,10 @@ NO_DOC, PARSING, HEAD, TEXT = range(1, 5)
 doc_map     = {}    # Map between document ids and <DOCNO>s
 last_match  = None  # global - gets bounced between indexify() and regex check funcs
 lexicon     = {}
+hexDict = {
+    '0':'0000', '1':'0001', '2':'0010', '3':'0011', '4':'0100', '5':'0101',
+    '6':'0110', '7':'0111', '8':'1000', '9':'1001', 'a':'1010', 'b':'1011',
+    'c':'1100', 'd':'1101', 'e':'1110', 'f':'1111', 'L':''}
 
 # ===================
 
@@ -123,6 +127,37 @@ def indexify(a_fn, stoplist, a_print):
                         # Print it if that flag's flagged
                         if a_print:
                             print(w)
+def dec2bin(n):
+    """
+    A foolishly simple look-up method of getting binary string from an integer
+    This happens to be faster than all other ways!!!
+    """
+    # =========================================================
+    # create hex of int, remove '0x'. now for each hex char,
+    # look up binary string, append in list and join at the end.
+    # =========================================================
+    return ''.join([hexDict[hstr] for hstr in hex(n)[2:]])
+
+def bitstring_to_bytes(s):
+    v = int(s, 2)
+    b = bytearray()
+    while v:
+        b.append(v & 0xff)
+        v >>= 8
+    return bytes(b[::-1])
+
+def getVBEncoding(n):
+    binary = dec2bin(n)
+
+    final = ""
+
+    while(len(binary) >=7):
+        final += "1"+binary[-7:]
+        binary = binary[0:-7]
+    binary = binary.zfill(8)
+    final += binary
+
+    return bitstring_to_bytes(final)
 
 """
 Checks if the string is an opening tag for the passed regex
@@ -186,10 +221,14 @@ def write_lexicon_invs(lss, lfn, ifn):
 
             # List containing the document-frequency followed by the document ids and in-doc freqs
             tosav = [len(refs)] + [a[i] for a in refs for i in (0, 1)]
+            print(term,tosav)
             for n in tosav:
                 # Convert to a bytes array (4 large for 32 bit integers)
-                b = n.to_bytes(INT_SIZE // 8, byteorder='big')
+                # b = n.to_bytes(INT_SIZE // 8, byteorder='big')
+                b = getVBEncoding(n)
+                print(b)
                 vf.write(b)
+            print("---------------")
 
 
 

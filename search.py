@@ -24,6 +24,20 @@ def getDocNum(mapFile):
     return docIDNumMap
 
 
+def getCurrentNumber(f):
+    byte = f.read(1)
+    curBin = bin(byte[0])[2:]
+    curBin = curBin.zfill(8)
+    integratedBin = curBin[1:]
+
+    while curBin[0] is "1":
+        byte = f.read(1)
+        curBin = bin(byte[0])[2:]
+        curBin = curBin.zfill(8)
+        integratedBin = curBin[1:] + "" + integratedBin
+
+    return integratedBin
+
 def getTermOccurance(term, lexiconFile="lexicon", invertedListFile="invlists", mapFile="map"):
     lexiconPositionMap = getLexicon(lexiconFile)
 
@@ -41,14 +55,18 @@ def getTermOccurance(term, lexiconFile="lexicon", invertedListFile="invlists", m
 
     f.seek(offset, 0)
 
-    listLength = int.from_bytes(f.read(4), byteorder='big')
+    listLength = int(getCurrentNumber(f), 2)
 
     print(listLength)
 
+    invList = []
+
     while listLength > 0:
-        docID = int.from_bytes(f.read(4), byteorder='big')
+        docID = int(getCurrentNumber(f), 2)
+        termCount = int(getCurrentNumber(f), 2)
+
         print(docIDNumMap[docID].rstrip(), end=" ")
-        print(str(int.from_bytes(f.read(4), byteorder='big')))
+        print(termCount)
         listLength -= 1
     print("------------------")
 
