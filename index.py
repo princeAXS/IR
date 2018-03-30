@@ -223,7 +223,6 @@ def write_lexicon_invs(lss, lfn, ifn):
             tosav = [len(refs)] + [a[i] for a in refs for i in (0, 1)]
             for n in tosav:
                 b = getVBEncoding(n)
-                print(b)
                 vf.write(b)
             print("---------------")
 
