@@ -59,8 +59,6 @@ def getTermOccurance(term, lexiconFile="lexicon", invertedListFile="invlists", m
 
     print(listLength)
 
-    invList = []
-
     while listLength > 0:
         docID = int(getCurrentNumber(f), 2)
         termCount = int(getCurrentNumber(f), 2)

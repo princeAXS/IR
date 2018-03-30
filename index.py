@@ -221,10 +221,7 @@ def write_lexicon_invs(lss, lfn, ifn):
 
             # List containing the document-frequency followed by the document ids and in-doc freqs
             tosav = [len(refs)] + [a[i] for a in refs for i in (0, 1)]
-            print(term,tosav)
             for n in tosav:
-                # Convert to a bytes array (4 large for 32 bit integers)
-                # b = n.to_bytes(INT_SIZE // 8, byteorder='big')
                 b = getVBEncoding(n)
                 print(b)
                 vf.write(b)
