@@ -224,7 +224,6 @@ def write_lexicon_invs(lss, lfn, ifn):
             for n in tosav:
                 b = getVBEncoding(n)
                 vf.write(b)
-            print("---------------")
 
 
 
