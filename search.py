@@ -50,6 +50,7 @@ def getTermOccurance(term,lexiconFile = "lexicon",invertedListFile = "invlists",
         print(docIDNumMap[docID].rstrip(), end=" ")
         print(str(int.from_bytes(f.read(4), byteorder='big')))
         listLength -= 1
+    print("------------------")
 
 if __name__ == '__main__':
     termList = sys.argv[4:]
