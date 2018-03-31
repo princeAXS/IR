@@ -1,0 +1,20 @@
+# Auxiliary files #
+###################
+map
+lexicon
+invlists*
+
+# Assistive files #
+###################
+stoplist
+latimes*
+*.pdf
+
+# Temp files/dirs #
+###################
+__pycache__/
+.idea/
+*.log
+*.png
+*.zip
+*.txt
