@@ -10,7 +10,7 @@
 ######################################
 
 import re
-from string import punctuation as s_punc
+from string import punctuation as S_PUNC
 
 """
 Takes a string and normalises it
@@ -18,32 +18,30 @@ Takes a string and normalises it
 Args:
     intake: Input string to be dissected
     hyphens: Boolean - True means replace hyphenated words with a space in the middle
-    punctuation: (Regex-compatible) string (or list of strings) of punctuation marks to be deleted
+    punctuation: Regex of punctuation marks to be deleted
     case: Boolean - True means fold cases to lowercase
-    stops: List of stop words to ignore
+    stops: Set of stop words to ignore
 
 Returns:
     A list (not a set) of the resultant terms
 """
-def normalise(intake, hyphens=True, punctuation=s_punc, case=True, stops=None):
+def normalise(intake, hyphens=True, punctuation=r'[^\w\ ]+', case=True, stops=None):
     # Case fold
     if case:
         intake = intake.lower()
 
     # Replace hyphens
     if hyphens:
-        intake = re.sub(r'(?<=[a-zA-Z])-(?=[a-zA-Z])', ' ', intake)
+        # Match hyphenated words, but /one/ side may be a number
+        intake = re.sub(r'(?<=[a-zA-Z])-(?=\w)', ' ', intake)
+        intake = re.sub(r'(?<=\w)-(?=[a-zA-Z])', ' ', intake)
+        # Otherwise we collapse the hyphen, assuming it's a delimiter
+        intake = intake.replace('-', '')
         # That's regex for a hyphen with letters on either side
 
-    # Remove defined punctuation marks
+    # Delete all punc marks from the input string
     if punctuation:
-        # Just for good measure
-        if isinstance(punctuation, list):
-            # If the punc paramater is a list, collapse it to a single string
-            punctuation = ''.join(punctuation)
-
-        # Delete all punc marks from the input string
-        intake = re.sub(punctuation, '', intake)
+        intake = re.sub(punctuation, ' ', intake)
 
 
 
@@ -53,7 +51,5 @@ def normalise(intake, hyphens=True, punctuation=s_punc, case=True, stops=None):
     else:
         # Take all terms from the input string
         terms = intake.split()
-
-    # TODO stemming if I've got time and am bored
 
     return terms
