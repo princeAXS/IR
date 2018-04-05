@@ -18,15 +18,13 @@ from normalise import normalise
 INT_SIZE = 32 # -bits in an integer when saving the inverted lists
 
 # ===================
-# Regexes
+# Tag names for comparison/regexing
 
-r_doc       = r'doc'
+r_doc       = 'doc'
 r_doc_num   = r'docno>\s*(.*?)\s*<\/docno'
 
-r_head      = r'headline'
-r_body      = r'text'
-
-r_tag       = r'[\/\w]+'
+r_head      = 'headline'
+r_body      = 'text'
 
 # ===================
 # State enums, such that they are
@@ -37,8 +35,7 @@ NO_DOC, PARSING, HEAD, TEXT = range(1, 5)
 # ===================
 # Working variables
 
-#stoplist    = None  # To be fetched
-doc_map     = {}    # Map between document ids and <DOCNO>s
+doc_map     = []    # 'Map' between document ids and <DOCNO>s
 last_match  = None  # global - gets bounced between indexify() and regex check funcs
 lexicon     = {}
 hexDict = {
@@ -49,12 +46,13 @@ hexDict = {
 # ===================
 
 
-def indexify(a_fn, stoplist, a_print):
+def indexify(a_fn, stoplist, a_print, punc):
     global last_match
 
     current_id  = -1 # Will start at 0 due to being incremented every new document
     doc_terms = None # New dict every time we start on a new document
     state = NO_DOC   # Where in the document file we're up to (used for tracking closing tags)
+                     # Also cuts back on string comparisons
 
     with open(a_fn, 'r') as f:
         for line in f:
@@ -62,60 +60,42 @@ def indexify(a_fn, stoplist, a_print):
             # Could use the re.ignore_case flag, but why bother?
             line = line.strip().lower()
 
-            # ========== Opening Tags ==========
-            # Start of new document
-            if check_tag(r_doc, line):
-                doc_terms = {}
-                current_id += 1
-                state = PARSING
-
-            elif state == NO_DOC:
-                continue # We're outside a <DOC> tag - do nothing. This probably never occurs
-
-            # Document UID
-            elif check_tag(r_doc_num, line):
-                # Add entry to the map
-                doc_map[current_id] = last_match.group(1)
-
-            # Headline
-            elif check_tag(r_head, line):
-                state = HEAD # Start adding terms to the document terms list
-            # Document body
-            elif check_tag(r_body, line):
-                state = TEXT # Start adding terms to the document terms list
-
-
             # ========== Closing Tags ==========
             # Assume TEXT and HEADLINE tags never intersect
             # Close of body
-            elif check_close(r_body, line):
+            if state == TEXT and check_close(r_body, line):
                 state = PARSING
             # Close of headline
-            elif check_close(r_head, line):
+            elif state == HEAD and check_close(r_head, line):
                 state = PARSING
 
             # Finished with this document
-            elif check_close(r_doc, line):
+            elif state == PARSING and check_close(r_doc, line):
                 # Done with this doc - can finalise frequencies
                 # Store the doc id/term frequencies in the lexicon dict
                 for w, ft in doc_terms.items():
-                    lexicon[w].append((current_id, ft))
+                    # Append a tuple of the document id and the in-document term
+                    # frequency in the lexicon entry for this term
+                    lexicon[w].append( (current_id, ft) )
 
+                # Reset, ready for next doc
                 doc_terms = None
                 state = NO_DOC
 
             # ========== Term text ==========
             # It's a line to term-ify (term-inate, even :P)
-            elif (state == TEXT or state == HEAD):
-                if check_tag(r_tag, line):
+            elif ((state == TEXT) or (state == HEAD)):
+                if line.startswith('<') and line.endswith('>'):
                     # It's a markup tag - we don't want to index these
                     continue
 
                 # Munch anything but numbers, letters, and spaces
                 # We already case folded earlier - no need to do it again
-                t = normalise(line, punctuation=r'[^\w\d\ ]', case=False, stops=stoplist)
+                t = normalise(line, punctuation=punc, case=False, stops=stoplist)
+
                 for w in t:
                     # Increase (or add) in-doc frequency for this term
+
                     if w in doc_terms:
                         doc_terms[w] += 1
                     else:
@@ -159,33 +139,69 @@ def getVBEncoding(n):
 
     return bitstring_to_bytes(final)
 
+            # ========== Opening Tags ==========
+            # Start of new document
+            elif state == NO_DOC and check_tag(r_doc, line):
+                # Create new terms map, increment document id and set state
+                doc_terms = {}
+                current_id += 1
+                state = PARSING
+
+            # Document UID
+            elif state == PARSING and check_tag(r_doc_num, line, is_regex=True):
+                # Check we don't break the id->doc_map index relationship
+                # Unnecessary really, there's no way for these to get out of sync hopefully
+                # assert len(doc_map) == current_id
+
+                # Add entry to the map (the key is the item's index)
+                doc_map.append(last_match.group(1))
+
+            # Both these mean start adding terms to the document terms list
+            # Headline
+            elif state == PARSING and check_tag(r_head, line):
+                state = HEAD
+            # Document body
+            elif state == PARSING and check_tag(r_body, line):
+                state = TEXT
+
 """
-Checks if the string is an opening tag for the passed regex
+Checks if the string (@line) is an opening tag for the passed tag name (@comparitor)
 """
-def check_tag(reg, line):
+def check_tag(comparitor, line, is_regex=False):
     global last_match
-    # Python internally caches regexe objects, so no need to re.compile()
-    last_match = re.match(r'<' + reg + r'>', line)
+
+    # Add tag braces
+    comparitor = '<' + comparitor + '>'
+
+    if is_regex:
+        # Python internally caches regex objects, so no need to re.compile()
+        last_match = re.match(comparitor, line)
+    else:
+        # Simple string comparison - much faster than regexes
+        last_match = (comparitor == line)
+
+    # Return the match object/match results - will eval to True if there's a match
     return last_match
 
 """
 Checks if the string is a closing tag for the passed regex
 """
-def check_close(reg, line):
+def check_close(reg, line, is_regex=False):
     # Lazy code deduplication
-    return check_tag(r'/' + reg, line)
+    return check_tag(r'/' + reg, line, is_regex)
 
 """
-Opens a stoplist stored on disk and returns it as a list of strings
+Opens a stoplist stored on disk and returns it as a set of strings
 """
 def open_stoplist(sfn):
     if sfn is None:
         # No stoplist to read - return a blank
-        return []
+        return set()
 
     with open(sfn, 'r') as sf:
-        # Read all words (strip them of whitespace) and return the list
-        sl = [w.strip() for w in sf]
+        # Read all words (strip them of whitespace) and return the set
+        # Set because order and identity don't matter, and there are good time gains to be had
+        sl = {w.strip() for w in sf}
         return sl
 
 """
@@ -196,7 +212,7 @@ Each line has two items
 """
 def write_map(omap, ofn):
     with open(ofn, 'w') as of:
-        for (did, dno) in omap.items():
+        for (did, dno) in enumerate(omap):
             of.write('{} {}\n'.format(did, dno))
 
 
@@ -205,24 +221,28 @@ Writes the 'lexicon' and 'invlists' files to disk in paratandemllel
 lexicon: each line has two items
     1. the term this line is for
     2. the position in invlists for this entry (can be navigated to using file.seek())
-invlists: binary file
+invlists: binary file - each number takes 4 bytes
+     - For each term
     1. document frequency
     2. document id
     3. in-document frequency
-    4. Repeat 2-3 as per the doc freq for each term
+    4. Repeat 2-3 as per the doc freq
 """
 def write_lexicon_invs(lss, lfn, ifn):
     with open(lfn, 'w') as lf, open(ifn, 'wb') as vf:
-        for term, refs in lss.items(): # list of tuples
+        for term, refs in lss.items(): # dict of list of tuples
+
             # Write the term and the current index to the lexicon
-            # I believe python well give the seek position as a number of bytes from the start
+            # Python will tell() the seek position as a number of bytes from the start
             # for binary-type files. This index can be passed to file.seek()
             lf.write('{} {}\n'.format(term, vf.tell() ))
 
             # List containing the document-frequency followed by the document ids and in-doc freqs
             tosav = [len(refs)] + [a[i] for a in refs for i in (0, 1)]
             for n in tosav:
+                # Get the encoded bytes to output
                 b = getVBEncoding(n)
+
                 vf.write(b)
 
 
@@ -235,26 +255,17 @@ if __name__ == '__main__':
                         help='Print each new term as it\'s found')
     parser.add_argument('-s', '--stoplist', type=str,
                         help='A path to a file containing a list of stopwords')
-    parser.add_argument('-v', '--verbose', action='store_true',
-                        help='Output run times')
     args = parser.parse_args()
 
-    # Track how long it takes to index and write to disk
-    v = args.verbose
-    if v:
-        from time import time
-        t_s = time()
 
-    # Actually do stuff
-    indexify(args.sourcefile, open_stoplist(args.stoplist), args.print)
 
-    if v:
-        t_i = time()
+    # Gracefully catch errors on file access/write
+    try:
+        # Actually do stuff
+        indexify(args.sourcefile, open_stoplist(args.stoplist), args.print, r'[^a-z0-9\ ]+')
 
-    # Save the auxiliary files
-    write_map(doc_map, 'map')
-    write_lexicon_invs(lexicon, 'lexicon', 'invlists')
-
-    if v:
-        t_w = time()
-        print('{}s to index\n{}s to write to disk'.format(t_i - t_s, t_w - t_s))
+        # Save the auxiliary files
+        write_map(doc_map, 'map')
+        write_lexicon_invs(lexicon, 'lexicon', 'invlists')
+    except OSError as e:
+        print('{}\nProgram Exiting'.format(e))

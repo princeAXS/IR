@@ -1,5 +1,4 @@
 import sys
-from normalise import normalise
 
 def getLexicon(lexiconFile):
 # Reads lexicons and the position of that lexicon in invlist file from memory
@@ -22,7 +21,6 @@ def getDocNum(mapFile):
             docIDNumMap.append(line[1])
 
     return docIDNumMap
-
 
 def getCurrentNumber(f):
 # Reads bytes until reaches to end byte
@@ -65,15 +63,15 @@ def getTermOccurance(term, lexiconFile="lexicon", invertedListFile="invlists", m
     # opens the file in binary mode to read bytes
     f = open(invertedListFile, 'rb')
 
-    #seeks to appropiate position of particular term in invlist file
+    # seeks to appropiate position of particular term in invlist file
     f.seek(offset, 0)
 
-    #reads first number at the offset that is list length or frequency of term occured in all documents
+    # reads first number at the offset that is list length or frequency of term occured in all documents
     listLength = int(getCurrentNumber(f), 2)
 
     print(listLength)
 
-    #Loop through to get each docId in which term occured and its frequency
+    # Loop through to get each docId in which term occured and its frequency
     while listLength > 0:
         #reads docId and termCount alternatively
         docID = int(getCurrentNumber(f), 2)
@@ -83,11 +81,11 @@ def getTermOccurance(term, lexiconFile="lexicon", invertedListFile="invlists", m
         print(termCount)
         listLength -= 1
     print("------------------")
-
+  
+  
 
 if __name__ == '__main__':
     termList = sys.argv[4:]
-
 
     for term in termList:
         getTermOccurance(term,sys.argv[1],sys.argv[2],sys.argv[3])
