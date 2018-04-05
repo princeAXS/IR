@@ -48,6 +48,7 @@ def indexify(a_fn, stoplist, a_print, punc):
     current_id  = -1 # Will start at 0 due to being incremented every new document
     doc_terms = None # New dict every time we start on a new document
     state = NO_DOC   # Where in the document file we're up to (used for tracking closing tags)
+                     # Also cuts back on string comparisons
 
     with open(a_fn, 'r') as f:
         for line in f:
@@ -69,8 +70,11 @@ def indexify(a_fn, stoplist, a_print, punc):
                 # Done with this doc - can finalise frequencies
                 # Store the doc id/term frequencies in the lexicon dict
                 for w, ft in doc_terms.items():
+                    # Append a tuple of the document id and the in-document term
+                    # frequency in the lexicon entry for this term
                     lexicon[w].append( (current_id, ft) )
 
+                # Reset, ready for next doc
                 doc_terms = None
                 state = NO_DOC
 
@@ -87,6 +91,7 @@ def indexify(a_fn, stoplist, a_print, punc):
 
                 for w in t:
                     # Increase (or add) in-doc frequency for this term
+
                     if w in doc_terms:
                         doc_terms[w] += 1
                     else:
@@ -102,6 +107,7 @@ def indexify(a_fn, stoplist, a_print, punc):
             # ========== Opening Tags ==========
             # Start of new document
             elif state == NO_DOC and check_tag(r_doc, line):
+                # Create new terms map, increment document id and set state
                 doc_terms = {}
                 current_id += 1
                 state = PARSING
@@ -109,8 +115,10 @@ def indexify(a_fn, stoplist, a_print, punc):
             # Document UID
             elif state == PARSING and check_tag(r_doc_num, line, is_regex=True):
                 # Check we don't break the id->doc_map index relationship
-                assert len(doc_map) == current_id
-                # Add entry to the map
+                # Unnecessary really, there's no way for these to get out of sync hopefully
+                # assert len(doc_map) == current_id
+
+                # Add entry to the map (the key is the item's index)
                 doc_map.append(last_match.group(1))
 
             # Both these mean start adding terms to the document terms list
@@ -122,20 +130,22 @@ def indexify(a_fn, stoplist, a_print, punc):
                 state = TEXT
 
 """
-Checks if the string is an opening tag for the passed tag
+Checks if the string (@line) is an opening tag for the passed tag name (@comparitor)
 """
 def check_tag(comparitor, line, is_regex=False):
     global last_match
 
+    # Add tag braces
     comparitor = '<' + comparitor + '>'
 
     if is_regex:
         # Python internally caches regex objects, so no need to re.compile()
         last_match = re.match(comparitor, line)
     else:
-        # Simple string comparison
+        # Simple string comparison - much faster than regexes
         last_match = (comparitor == line)
 
+    # Return the match object/match results - will eval to True if there's a match
     return last_match
 
 """
@@ -143,10 +153,10 @@ Checks if the string is a closing tag for the passed regex
 """
 def check_close(reg, line, is_regex=False):
     # Lazy code deduplication
-    return check_tag(r'/' + reg, line, is_regex=is_regex)
+    return check_tag(r'/' + reg, line, is_regex)
 
 """
-Opens a stoplist stored on disk and returns it as a list of strings
+Opens a stoplist stored on disk and returns it as a set of strings
 """
 def open_stoplist(sfn):
     if sfn is None:
@@ -176,17 +186,19 @@ Writes the 'lexicon' and 'invlists' files to disk in paratandemllel
 lexicon: each line has two items
     1. the term this line is for
     2. the position in invlists for this entry (can be navigated to using file.seek())
-invlists: binary file
+invlists: binary file - each number takes 4 bytes
+     - For each term
     1. document frequency
     2. document id
     3. in-document frequency
-    4. Repeat 2-3 as per the doc freq for each term
+    4. Repeat 2-3 as per the doc freq
 """
 def write_lexicon_invs(lss, lfn, ifn):
     with open(lfn, 'w') as lf, open(ifn, 'wb') as vf:
-        for term, refs in lss.items(): # list of tuples
+        for term, refs in lss.items(): # dict of list of tuples
+
             # Write the term and the current index to the lexicon
-            # I believe python well give the seek position as a number of bytes from the start
+            # I believe python well tell() the seek position as a number of bytes from the start
             # for binary-type files. This index can be passed to file.seek()
             lf.write('{} {}\n'.format(term, vf.tell() ))
 
@@ -195,6 +207,7 @@ def write_lexicon_invs(lss, lfn, ifn):
             for n in tosav:
                 # Convert to a bytes array (4 large for 32 bit integers)
                 b = n.to_bytes(INT_SIZE // 8, byteorder='big')
+                # And output to the file
                 vf.write(b)
 
 
@@ -211,9 +224,13 @@ if __name__ == '__main__':
 
 
 
-    # Actually do stuff
-    indexify(args.sourcefile, open_stoplist(args.stoplist), args.print, r'[^\w\d\ ]')
+    # Gracefully catch errors on file access/write
+    try:
+        # Actually do stuff
+        indexify(args.sourcefile, open_stoplist(args.stoplist), args.print, r'[^\w\d\ ]+')
 
-    # Save the auxiliary files
-    write_map(doc_map, 'map')
-    write_lexicon_invs(lexicon, 'lexicon', 'invlists')
+        # Save the auxiliary files
+        write_map(doc_map, 'map')
+        write_lexicon_invs(lexicon, 'lexicon', 'invlists')
+    except OSError as e:
+        print('{}\nProgram Exiting'.format(e))

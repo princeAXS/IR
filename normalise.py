@@ -12,6 +12,7 @@
 import re
 from string import punctuation as S_PUNC
 
+# Regex matching punctuation from the ASCII char set
 DEFAULT_PUNC = '[' + S_PUNC + ']+'
 
 """
@@ -34,12 +35,15 @@ def normalise(intake, hyphens=True, punctuation=DEFAULT_PUNC, case=True, stops=N
 
     # Replace hyphens
     if hyphens:
-        intake = re.sub(r'(?<=[a-zA-Z])-(?=[a-zA-Z])', ' ', intake)
+        # Match hyphenated words, but /one/ side may be a number
+        intake = re.sub(r'(?<=[a-zA-Z])-(?=\w)', ' ', intake)
+        intake = re.sub(r'(?<=\w)-(?=[a-zA-Z])', ' ', intake)
+        # Otherwise we collapse the hyphen, assuming it's a delimiter
+        intake = intake.replace('-', '')
         # That's regex for a hyphen with letters on either side
 
-    # Remove defined punctuation marks
+    # Delete all punc marks from the input string
     if punctuation:
-        # Delete all punc marks from the input string
         intake = re.sub(punctuation, ' ', intake)
 
 
@@ -50,7 +54,5 @@ def normalise(intake, hyphens=True, punctuation=DEFAULT_PUNC, case=True, stops=N
     else:
         # Take all terms from the input string
         terms = intake.split()
-
-    # TODO stemming if I've got time and am bored
 
     return terms
