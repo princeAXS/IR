@@ -12,9 +12,6 @@
 import re
 from string import punctuation as S_PUNC
 
-# Regex matching punctuation from the ASCII char set
-DEFAULT_PUNC = '[' + S_PUNC + ']+'
-
 """
 Takes a string and normalises it
 
@@ -28,7 +25,7 @@ Args:
 Returns:
     A list (not a set) of the resultant terms
 """
-def normalise(intake, hyphens=True, punctuation=DEFAULT_PUNC, case=True, stops=None):
+def normalise(intake, hyphens=True, punctuation=r'[^\w\ ]+', case=True, stops=None):
     # Case fold
     if case:
         intake = intake.lower()

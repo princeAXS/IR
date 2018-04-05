@@ -198,7 +198,7 @@ def write_lexicon_invs(lss, lfn, ifn):
         for term, refs in lss.items(): # dict of list of tuples
 
             # Write the term and the current index to the lexicon
-            # I believe python well tell() the seek position as a number of bytes from the start
+            # Python will tell() the seek position as a number of bytes from the start
             # for binary-type files. This index can be passed to file.seek()
             lf.write('{} {}\n'.format(term, vf.tell() ))
 
@@ -227,7 +227,7 @@ if __name__ == '__main__':
     # Gracefully catch errors on file access/write
     try:
         # Actually do stuff
-        indexify(args.sourcefile, open_stoplist(args.stoplist), args.print, r'[^\w\d\ ]+')
+        indexify(args.sourcefile, open_stoplist(args.stoplist), args.print, r'[^a-z0-9\ ]+')
 
         # Save the auxiliary files
         write_map(doc_map, 'map')
