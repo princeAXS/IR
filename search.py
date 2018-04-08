@@ -1,6 +1,8 @@
+#!/usr/bin/env python3
 # pylint: disable=C0111,C0103,C0301
 
 import sys
+from normalise import normalise
 
 def getLexicon(lexiconFile):
 # Reads lexicons and the position of that lexicon in invlist file from memory
@@ -19,7 +21,7 @@ def getDocNum(mapFile):
 
     with open(mapFile, 'r') as f:
         for line in f:
-            line = line.split(" ")
+            line = line.rstrip().split(" ")
             docIDNumMap.append(line[1])
 
     return docIDNumMap
@@ -47,9 +49,7 @@ def getCurrentNumber(f):
     #returns actual binary string of number
     return integratedBin
 
-def getTermOccurance(term, lexiconFile="lexicon", invertedListFile="invlists", mapFile="map"):
-# Reads docId and docNum from memory and make hash map of it
-    lexiconPositionMap = getLexicon(lexiconFile)
+def getTermOccurance(term, invertedListFile, lexiconPositionMap, docIDNumMap):
 
     # if term not found then simply exits with showing a message
     if term not in lexiconPositionMap:
@@ -58,7 +58,6 @@ def getTermOccurance(term, lexiconFile="lexicon", invertedListFile="invlists", m
 
     print(term)
 
-    docIDNumMap = getDocNum(mapFile)
 
     offset = int(lexiconPositionMap[term])
 
@@ -79,15 +78,23 @@ def getTermOccurance(term, lexiconFile="lexicon", invertedListFile="invlists", m
         docID = int(getCurrentNumber(f), 2)
         termCount = int(getCurrentNumber(f), 2)
 
-        print(docIDNumMap[docID].rstrip(), end=" ")
+        print(docIDNumMap[docID], end=" ")
         print(termCount)
         listLength -= 1
     print("------------------")
 
 
 
+# Usage: ./search.py <lexicon> <invlists> <map> <queryterm 1> [... <queryterm N>]
 if __name__ == '__main__':
-    termList = sys.argv[4:]
+    try:
+        termList = normalise(' '.join(sys.argv[4:]))
 
-    for inputTerm in termList:
-        getTermOccurance(inputTerm, sys.argv[1], sys.argv[2], sys.argv[3])
+        # Reads docId and docNum from memory and make hash map of it
+        lex = getLexicon(sys.argv[1])
+        dmap = getDocNum(sys.argv[3])
+
+        for inputTerm in termList:
+            getTermOccurance(inputTerm, sys.argv[2], lex, dmap)
+    except OSError as e:
+        print('{}\nProgram Exiting'.format(e))
