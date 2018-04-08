@@ -1,4 +1,8 @@
+#!/usr/bin/env python3
+# pylint: disable=C0111,C0103,C0301
+
 import sys
+from normalise import normalise
 
 def getLexicon(lexiconFile):
 # Reads lexicons and the position of that lexicon in invlist file from memory
@@ -22,9 +26,7 @@ def getDocNum(mapFile):
 
     return docIDNumMap
 
-def getTermOccurance(term,lexiconFile = "lexicon",invertedListFile = "invlists",mapFile = "map"):
-# Reads the invlist and prints out term, its frequency, doc containing that term and its frequency within that document
-    lexiconPositionMap = getLexicon(lexiconFile )
+def getTermOccurance(term, invertedListFile, lexiconPositionMap, docIDNumMap):
 
     # if term not found then simply exits with showing a message
     if term not in lexiconPositionMap:
@@ -32,8 +34,6 @@ def getTermOccurance(term,lexiconFile = "lexicon",invertedListFile = "invlists",
         return
 
     print(term)
-
-    docIDNumMap = getDocNum(mapFile)
 
     offset = int(lexiconPositionMap[term])
 
@@ -49,15 +49,25 @@ def getTermOccurance(term,lexiconFile = "lexicon",invertedListFile = "invlists",
     print(listLength)
 
     #Loop through to get each docId in which term occured and its frequency
-    while listLength>0:
+    while listLength > 0:
         docID = int.from_bytes(f.read(4), byteorder='big')
         print(docIDNumMap[docID].rstrip(), end=" ")
         print(str(int.from_bytes(f.read(4), byteorder='big')))
         listLength -= 1
     print("------------------")
 
-if __name__ == '__main__':
-    termList = sys.argv[4:]
 
-    for term in termList:
-        getTermOccurance(term,sys.argv[1],sys.argv[2],sys.argv[3])
+
+# Usage: ./search.py <lexicon> <invlists> <map> <queryterm 1> [... <queryterm N>]
+if __name__ == '__main__':
+    try:
+        termList = normalise(' '.join(sys.argv[4:]))
+
+        # Reads docId and docNum from memory and make hash map of it
+        lex = getLexicon(sys.argv[1])
+        dmap = getDocNum(sys.argv[3])
+
+        for inputTerm in termList:
+            getTermOccurance(inputTerm, sys.argv[2], lex, dmap)
+    except OSError as e:
+        print('{}\nProgram Exiting'.format(e))
