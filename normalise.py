@@ -10,7 +10,6 @@
 ######################################
 
 import re
-from string import punctuation as S_PUNC
 
 """
 Takes a string and normalises it

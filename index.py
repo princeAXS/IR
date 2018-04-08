@@ -107,37 +107,6 @@ def indexify(a_fn, stoplist, a_print, punc):
                         # Print it if that flag's flagged
                         if a_print:
                             print(w)
-def dec2bin(n):
-    """
-    A foolishly simple look-up method of getting binary string from an integer
-    This happens to be faster than all other ways!!!
-    """
-    # =========================================================
-    # create hex of int, remove '0x'. now for each hex char,
-    # look up binary string, append in list and join at the end.
-    # =========================================================
-    return ''.join([hexDict[hstr] for hstr in hex(n)[2:]])
-
-def bitstring_to_bytes(s):
-    v = int(s, 2)
-    b = bytearray()
-    while v:
-        b.append(v & 0xff)
-        v >>= 8
-    return bytes(b[::-1])
-
-def getVBEncoding(n):
-    binary = dec2bin(n)
-
-    final = ""
-
-    while(len(binary) >=7):
-        final += "1"+binary[-7:]
-        binary = binary[0:-7]
-    binary = binary.zfill(8)
-    final += binary
-
-    return bitstring_to_bytes(final)
 
             # ========== Opening Tags ==========
             # Start of new document
@@ -163,6 +132,38 @@ def getVBEncoding(n):
             # Document body
             elif state == PARSING and check_tag(r_body, line):
                 state = TEXT
+
+def dec2bin(n):
+    """
+    A foolishly simple look-up method of getting binary string from an integer
+    This happens to be faster than all other ways!!!
+    """
+    # =========================================================
+    # create hex of int, remove '0x'. now for each hex char,
+    # look up binary string, append in list and join at the end.
+    # =========================================================
+    return ''.join([hexDict[hstr] for hstr in hex(n)[2:]])
+
+def bitstring_to_bytes(s):
+    v = int(s, 2)
+    b = bytearray()
+    while v:
+        b.append(v & 0xff)
+        v >>= 8
+    return bytes(b[::-1])
+
+def getVBEncoding(n):
+    binary = dec2bin(n)
+
+    final = ""
+
+    while len(binary) >= 7:
+        final += "1" + binary[-7:]
+        binary = binary[0:-7]
+    binary = binary.zfill(8)
+    final += binary
+
+    return bitstring_to_bytes(final)
 
 """
 Checks if the string (@line) is an opening tag for the passed tag name (@comparitor)

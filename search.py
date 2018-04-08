@@ -1,3 +1,5 @@
+# pylint: disable=C0111,C0103,C0301
+
 import sys
 
 def getLexicon(lexiconFile):
@@ -36,7 +38,7 @@ def getCurrentNumber(f):
     integratedBin = curBin[1:]
 
     #loops through the bytes until get to the end byte
-    while curBin[0] is "1":
+    while curBin[0] == "1":
         byte = f.read(1)
         curBin = bin(byte[0])[2:]
         curBin = curBin.zfill(8)
@@ -81,11 +83,11 @@ def getTermOccurance(term, lexiconFile="lexicon", invertedListFile="invlists", m
         print(termCount)
         listLength -= 1
     print("------------------")
-  
-  
+
+
 
 if __name__ == '__main__':
     termList = sys.argv[4:]
 
-    for term in termList:
-        getTermOccurance(term,sys.argv[1],sys.argv[2],sys.argv[3])
+    for inputTerm in termList:
+        getTermOccurance(inputTerm, sys.argv[1], sys.argv[2], sys.argv[3])
