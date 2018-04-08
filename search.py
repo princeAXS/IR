@@ -51,9 +51,8 @@ def getCurrentNumber(f):
 
 def getTermOccurance(term, invertedListFile, lexiconPositionMap, docIDNumMap):
 
-    # if term not found then simply exits with showing a message
+    # if term not found then simply exits without any output
     if term not in lexiconPositionMap:
-        print("Cannot find term:", term)
         return
 
     print(term)
