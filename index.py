@@ -147,6 +147,11 @@ def dec2bin(n):
 def bitstring_to_bytes(s):
     v = int(s, 2)
     b = bytearray()
+
+    # Edge case of document id #0
+    if not v:
+        b.append(0x00)
+
     while v:
         b.append(v & 0xff)
         v >>= 8
