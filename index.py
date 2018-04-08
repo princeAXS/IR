@@ -15,8 +15,6 @@ import re
 import argparse
 from normalise import normalise
 
-INT_SIZE = 32 # -bits in an integer when saving the inverted lists
-
 # ===================
 # Tag names for comparison/regexing
 
@@ -243,9 +241,18 @@ def write_lexicon_invs(lss, lfn, ifn):
             # for binary-type files. This index can be passed to file.seek()
             lf.write('{} {}\n'.format(term, vf.tell() ))
 
+            gap_prev = 0
+
             # List containing the document-frequency followed by the document ids and in-doc freqs
             tosav = [len(refs)] + [a[i] for a in refs for i in (0, 1)]
-            for n in tosav:
+            for i, n in enumerate(tosav):
+
+                if i % 2:
+                    # n -= gap_prev
+                    # gap_prev = n
+
+                    n, gap_prev = (n - gap_prev), n
+
                 # Get the encoded bytes to output
                 b = getVBEncoding(n)
 
