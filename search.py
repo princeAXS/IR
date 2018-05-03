@@ -4,6 +4,7 @@
 import sys,argparse,time
 from math import exp
 from normalise import normalise
+from minHeap import Heap
 
 docScoreMap = {}
 AL,N,k1,b = 0,0,0,0
@@ -119,7 +120,7 @@ if __name__ == '__main__':
         parser.add_argument('queryterms', help='List of query terms', nargs='+')
         args = parser.parse_args()
 
-        print(args.queryterms)
+        # print(args.queryterms)
 
         # Reads docId and docNum from memory and make hash map of it
         lexicons = getLexicon(args.lexicon)
@@ -139,9 +140,16 @@ if __name__ == '__main__':
         numOfResult = args.numresults
         querylabel = args.querylabel
 
-        i = 0
-        for r in sorted(docScoreMap, key=docScoreMap.get, reverse=True):
-            print(querylabel, r, i, docScoreMap[r])
+        minHeap = Heap()
+
+        for key in docScoreMap:
+            minHeap.add((docScoreMap[key], key))
+            if len(minHeap.heap) > numOfResult:
+                minHeap.del_min()
+
+        i = 1
+        for item in reversed(minHeap.heap):
+            print(querylabel, item[1], i, item[0])
             i += 1
 
         print("Running time: %d ms" % ((time.time() - start_time) * 1000))
