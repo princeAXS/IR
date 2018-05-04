@@ -6,16 +6,22 @@ from math import exp
 from normalise import normalise
 from minHeap import Heap
 
+# HashMap to store Doc ID and its BM25 score for each query term
 docScoreMap = {}
+
+# Constants for BM25 function
 AL,N,k1,b = 0,0,0,0
 
 def calculateK(Ld):
+    # Calculates K, a component of BM25 function
     return k1*((1-b)+((b*Ld)/AL))
 
 def calculateBM25(ft, K, fdt):
+    # Calculates BM25 function score
     return (exp((N-ft+0.5)/(ft+0.5)))*(((k1+1)*fdt)/(K+fdt))
 
 def getNAndAL(docMap):
+    # Iterate through each row in map file to calculate average doc length i.e AL
     sum = 0
     for item in docMap:
         sum += int(item[1])
@@ -45,7 +51,7 @@ def getLexicon(lexiconFile):
     return lexiconPositionMap
 
 def getDocNum(mapFile):
-    # Reads docId and docNum from memory and make hash map of it
+    # Reads docId, docNum and docLength from memory and make hash map of it
     docIDNumMap = []
 
     with open(mapFile, 'r') as f:
@@ -60,8 +66,6 @@ def getTermOccurance(term, invertedListFile, lexiconPositionMap, docIDNumMap):
     if term not in lexiconPositionMap:
         return
 
-    # print(term)
-
     offset = int(lexiconPositionMap[term])
 
     #opens the file in binary mode to read bytes
@@ -74,8 +78,6 @@ def getTermOccurance(term, invertedListFile, lexiconPositionMap, docIDNumMap):
     listLength = int.from_bytes(f.read(4), byteorder='big')
     ft = listLength
 
-    # print(listLength)
-
     #Loop through to get each docId in which term occured and its frequency
     while listLength > 0:
         docRow = docIDNumMap[int.from_bytes(f.read(4), byteorder='big')]
@@ -83,7 +85,6 @@ def getTermOccurance(term, invertedListFile, lexiconPositionMap, docIDNumMap):
         docId = docRow[0]
 
         K = calculateK(int(docRow[1]))
-        # print(K,ft,fdt)
         score = calculateBM25(ft, K, fdt)
 
         if docId in docScoreMap:
@@ -92,10 +93,6 @@ def getTermOccurance(term, invertedListFile, lexiconPositionMap, docIDNumMap):
             docScoreMap[docId] = score
 
         listLength -= 1
-    # print("------------------")
-    # print(docScoreMap)
-    # print("------------------")
-    # print("------------------")
 
 
 # Usage: ./search.py <lexicon> <invlists> <map> <queryterm 1> [... <queryterm N>]
@@ -120,33 +117,36 @@ if __name__ == '__main__':
         parser.add_argument('queryterms', help='List of query terms', nargs='+')
         args = parser.parse_args()
 
-        # print(args.queryterms)
-
-        # Reads docId and docNum from memory and make hash map of it
+        # Reading appropriate files into memory
         lexicons = getLexicon(args.lexicon)
         docMap = getDocNum(args.map)
         stoplist = open_stoplist(args.stoplist)
 
+        # Initializing constants
         N,AL = getNAndAL(docMap)
-
         k1 = 1.2
         b = 0.75
-
-        termList = normalise(' '.join(args.queryterms), punctuation=r'[^a-z0-9\ ]+', case=False, stops=stoplist)
-
-        for inputTerm in termList:
-            getTermOccurance(inputTerm, args.invlists, lexicons, docMap)
-
         numOfResult = args.numresults
         querylabel = args.querylabel
 
+        # Normalizing query terms
+        termList = normalise(' '.join(args.queryterms), punctuation=r'[^a-z0-9\ ]+', case=False, stops=stoplist)
+
+        # Processing each query at a time
+        for inputTerm in termList:
+            getTermOccurance(inputTerm, args.invlists, lexicons, docMap)
+
+        # Initializing Min Heap to keep the record of top N results
         minHeap = Heap()
 
+        # Scaning through HashMap containing documents in which query terms occured and its score for that query
+        # and storing in MinHeap to get top N results
         for key in docScoreMap:
             minHeap.add((docScoreMap[key], key))
             if len(minHeap.heap) > numOfResult:
                 minHeap.del_min()
 
+        # Displaying the content of Min Heap sorted by BM25 score in descending order
         i = 1
         for item in reversed(minHeap.heap):
             print(querylabel, item[1], i, item[0])

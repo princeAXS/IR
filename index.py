@@ -79,7 +79,7 @@ def indexify(a_fn, stoplist, a_print, punc):
                 # Reset, ready for next doc
                 doc_terms = None
                 state = NO_DOC
-                
+                # Putting all together, each row in map will consist of Doc ID and its length
                 doc_map.append(docId+" "+str(docLength))
 
             # ========== Term text ==========
@@ -94,8 +94,9 @@ def indexify(a_fn, stoplist, a_print, punc):
                 t = normalise(line, punctuation=punc, case=False, stops=stoplist)
 
                 for w in t:
-                    # Increase (or add) in-doc frequency for this term
+                    # Recording the length of each indexed lexicons
                     docLength += len(w)
+                    # Increase (or add) in-doc frequency for this term
                     if w in doc_terms:
                         doc_terms[w] += 1
                     else:
