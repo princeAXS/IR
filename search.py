@@ -85,7 +85,7 @@ def getTermOccurance(term, invertedListFile, lexiconPositionMap, docIDNumMap):
         docId = docRow[0]
 
         K = calculateK(int(docRow[1]))
-        score = calculateBM25(ft, K, fdt)
+        score = float(str(round(calculateBM25(ft, K, fdt), 4)))
 
         if docId in docScoreMap:
             docScoreMap[docId] += score
@@ -142,15 +142,24 @@ if __name__ == '__main__':
         # Scaning through HashMap containing documents in which query terms occured and its score for that query
         # and storing in MinHeap to get top N results
         for key in docScoreMap:
-            minHeap.add((docScoreMap[key], key))
-            if len(minHeap.heap) > numOfResult:
-                minHeap.del_min()
+            minHeap.push(docScoreMap[key], key)
+            if len(minHeap._heap) > numOfResult:
+                minHeap.pop()
 
+        finalResult = []
+
+        while True:
+            try:
+                item = minHeap.next()
+                finalResult.append((item, docScoreMap[item]))
+            except:
+                break
         # Displaying the content of Min Heap sorted by BM25 score in descending order
         i = 1
-        for item in reversed(minHeap.heap):
-            print(querylabel, item[1], i, item[0])
+        for item in reversed(finalResult):
+            print(querylabel, item[0], i, item[1])
             i += 1
+
 
         print("Running time: %d ms" % ((time.time() - start_time) * 1000))
     except OSError as e:

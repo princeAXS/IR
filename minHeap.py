@@ -1,65 +1,39 @@
-import operator
-
+import heapq
 
 class Heap(object):
-    """"
-    Attributes:
-        heap: List representation of the heap
-        compare(p, c): comparator function, returns true if the relation between p and c is parent-chield
-    """
-    def __init__(self, heap=None, compare=operator.lt):
-        self.heap = [] if heap is None else heap
-        self.compare = compare
+    """ A neat min-heap wrapper which allows storing items by priority
+        and get the lowest item out first (pop()).
+        Also implements the iterator-methods, so can be used in a for
+        loop, which will loop through all items in increasing priority order.
+        Remember that accessing the items like this will iteratively call
+        pop(), and hence empties the heap! """
 
-    def __repr__(self):
-        return 'Heap({!r}, {!r})'.format(self.heap, self.compare)
+    def __init__(self):
+        """ create a new min-heap. """
+        self._heap = []
 
-    def _inv_heapify(self, child_index):
-        """
-        Do heapifying starting from bottom till it reaches the root.
-        """
-        heap, compare = self.heap, self.compare
-        child = child_index
-        while child > 0:
-            parent = child // 2
-            if compare(heap[parent], heap[child]):
-                return
-            heap[parent], heap[child] = heap[child], heap[parent]
-            child = parent
+    def push(self, priority, item):
+        """ Push an item with priority into the heap.
+            Priority 0 is the highest, which means that such an item will
+            be popped first."""
+        assert priority >= 0
+        heapq.heappush(self._heap, (priority, item))
 
-    def _heapify(self, parent_index):
-        """
-        Do heepifying starting from the root.
-        """
-        heap, compare = self.heap, self.compare
-        length = len(heap)
-        if length == 1:
-            return
-        parent = parent_index
-        while 2 * parent < length:
-            child = 2 * parent
-            if child + 1 < length and compare(heap[child + 1], heap[child]):
-                child += 1
-            if compare(heap[parent], heap[child]):
-                return
-            heap[parent], heap[child] = heap[child], heap[parent]
-            parent = child
-
-    def del_min(self):
-        heap = self.heap
-        last_element = heap.pop()
-        if not heap:
-            return last_element
-        item = heap[0]
-        heap[0] = last_element
-        self._heapify(0)
+    def pop(self):
+        """ Returns the item with lowest priority. """
+        item = heapq.heappop(self._heap)[1] # (prio, item)[1] == item
         return item
 
-    def min(self):
-        if not self.heap:
-            return None
-        return self.heap[0]
+    def __len__(self):
+        return len(self._heap)
 
-    def add(self, element):
-        self.heap.append(element)
-        self._inv_heapify(len(self.heap) - 1)
+    def __iter__(self):
+        """ Get all elements ordered by asc. priority. """
+        return self
+
+    def next(self):
+        """ Get all elements ordered by their priority (lowest first). """
+        try:
+            return self.pop()
+        except IndexError:
+            raise StopIteration
