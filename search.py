@@ -2,7 +2,7 @@
 # pylint: disable=C0111,C0103,C0301
 
 import sys,argparse,time
-from math import exp
+from math import log
 from normalise import normalise
 from minHeap import Heap
 
@@ -18,7 +18,7 @@ def calculateK(Ld):
 
 def calculateBM25(ft, K, fdt):
     # Calculates BM25 function score
-    return (exp((N-ft+0.5)/(ft+0.5)))*(((k1+1)*fdt)/(K+fdt))
+    return (log((N-ft+0.5)/(ft+0.5)))*(((k1+1)*fdt)/(K+fdt))
 
 def getNAndAL(docMap):
     # Iterate through each row in map file to calculate average doc length i.e AL
