@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 # pylint: disable=C0111,C0103,C0301
 
-import sys,argparse,time
+import argparse
+import time
 from math import log
 from normalise import normalise
 from minHeap import Heap
@@ -10,7 +11,7 @@ from minHeap import Heap
 docScoreMap = {}
 
 # Constants for BM25 function
-AL,N,k1,b = 0,0,0,0
+AL, N, k1, b = 0, 0, 0, 0
 
 def calculateK(Ld):
     # Calculates K, a component of BM25 function
@@ -20,12 +21,12 @@ def calculateBM25(ft, K, fdt):
     # Calculates BM25 function score
     return (log((N-ft+0.5)/(ft+0.5)))*(((k1+1)*fdt)/(K+fdt))
 
-def getNAndAL(docMap):
+def getNAndAL(dMap):
     # Iterate through each row in map file to calculate average doc length i.e AL
-    sum = 0
-    for item in docMap:
-        sum += int(item[1])
-    return len(docMap),int(sum/len(docMap))
+    total = 0
+    for entry in dMap:
+        total += int(entry[1])
+    return (len(dMap), int(total/len(dMap)))
 
 def open_stoplist(sfn):
     # Opens a stoplist stored on disk and returns it as a set of strings
@@ -57,7 +58,7 @@ def getDocNum(mapFile):
     with open(mapFile, 'r') as f:
         for line in f:
             line = line.rstrip().split(" ")
-            docIDNumMap.append([line[1],line[2]])
+            docIDNumMap.append([line[1], line[2]])
 
     return docIDNumMap
 
@@ -123,7 +124,7 @@ if __name__ == '__main__':
         stoplist = open_stoplist(args.stoplist)
 
         # Initializing constants
-        N,AL = getNAndAL(docMap)
+        N, AL = getNAndAL(docMap)
         k1 = 1.2
         b = 0.75
         numOfResult = args.numresults
@@ -143,7 +144,7 @@ if __name__ == '__main__':
         # and storing in MinHeap to get top N results
         for key in docScoreMap:
             minHeap.push(docScoreMap[key], key)
-            if len(minHeap._heap) > numOfResult:
+            if len(minHeap) > numOfResult:
                 minHeap.pop()
 
         finalResult = []
@@ -152,7 +153,7 @@ if __name__ == '__main__':
             try:
                 item = minHeap.next()
                 finalResult.append((item, docScoreMap[item]))
-            except:
+            except StopIteration:
                 break
         # Displaying the content of Min Heap sorted by BM25 score in descending order
         i = 1
