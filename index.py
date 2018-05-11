@@ -6,7 +6,7 @@
 ######################################
 #                                    #
 # s3550167 - Cary Symes              #
-# Information Retrieval Assignment 1 #
+# Information Retrieval Assignment 2 #
 # Created 2018-03-26                 #
 #                                    #
 ######################################
@@ -35,7 +35,7 @@ NO_DOC, PARSING, HEAD, TEXT = range(1, 5)
 # ===================
 # Working variables
 
-doc_map     = []    # 'Map' between document ids and <DOCNO>s
+doc_map     = []    # 'Map' between document ids and <DOCNO>s and their lengths
 last_match  = None  # global - gets bounced between indexify() and regex check funcs
 lexicon     = {}
 
@@ -49,8 +49,9 @@ def indexify(a_fn, stoplist, a_print, punc):
     doc_terms = None # New dict every time we start on a new document
     state = NO_DOC   # Where in the document file we're up to (used for tracking closing tags)
                      # Also cuts back on string comparisons
-    docLength = 0
-    docId = ""
+    term_num = 0
+    doc_len = 0
+    doc_id = ""
 
     with open(a_fn, 'r') as f:
         for line in f:
@@ -71,16 +72,16 @@ def indexify(a_fn, stoplist, a_print, punc):
             elif state == PARSING and check_close(r_doc, line):
                 # Done with this doc - can finalise frequencies
                 # Store the doc id/term frequencies in the lexicon dict
-                for w, ft in doc_terms.items():
+                for w, occs in doc_terms.items():
                     # Append a tuple of the document id and the in-document term
                     # frequency in the lexicon entry for this term
-                    lexicon[w].append( (current_id, ft) )
+                    lexicon[w].append( (current_id, len(occs), *occs) )
 
                 # Reset, ready for next doc
                 doc_terms = None
                 state = NO_DOC
-                # Putting all together, each row in map will consist of Doc ID and its length
-                doc_map.append(docId+" "+str(docLength))
+                # Each row in the map will consist of its doc ID and its length
+                doc_map.append(doc_id + " " + str(doc_len))
 
             # ========== Term text ==========
             # It's a line to term-ify (term-inate, even :P)
@@ -95,12 +96,12 @@ def indexify(a_fn, stoplist, a_print, punc):
 
                 for w in t:
                     # Recording the length of each indexed lexicons
-                    docLength += len(w)
+                    doc_len += len(w)
                     # Increase (or add) in-doc frequency for this term
-                    if w in doc_terms:
-                        doc_terms[w] += 1
-                    else:
-                        doc_terms[w] = 1
+                    if w not in doc_terms:
+                        doc_terms[w] = []
+                    doc_terms[w].append(term_num)
+                    term_num += 1
 
                     if w not in lexicon:
                         # It's a fresh term - we need to do stuff with this!
@@ -116,8 +117,9 @@ def indexify(a_fn, stoplist, a_print, punc):
                 doc_terms = {}
                 current_id += 1
                 state = PARSING
-                docLength = 0
-                docId = ""
+                term_num = 0
+                doc_len = 0
+                doc_id = ""
 
             # Document UID
             elif state == PARSING and check_tag(r_doc_num, line, is_regex=True):
@@ -126,7 +128,7 @@ def indexify(a_fn, stoplist, a_print, punc):
                 # assert len(doc_map) == current_id
 
                 # Add entry to the map (the key is the item's index)
-                docId = last_match.group(1)
+                doc_id = last_match.group(1)
 
             # Both these mean start adding terms to the document terms list
             # Headline
@@ -209,13 +211,16 @@ def write_lexicon_invs(lss, lfn, ifn):
             # for binary-type files. This index can be passed to file.seek()
             lf.write('{} {}\n'.format(term, vf.tell() ))
 
-            # List containing the document-frequency followed by the document ids and in-doc freqs
-            tosav = [len(refs)] + [a[i] for a in refs for i in (0, 1)]
-            for n in tosav:
-                # Convert to a bytes array (4 large for 32 bit integers)
-                b = n.to_bytes(INT_SIZE // 8, byteorder='big')
-                # And output to the file
-                vf.write(b)
+            # Save document-frequency followed by the document ids, in-doc freqs and terms positions
+
+            vf.write(len(refs).to_bytes(INT_SIZE // 8, byteorder='big')) # doc-freq
+
+            for r in refs:
+                for n in r:
+                    # Convert to a bytes array (4 large for 32 bit integers)
+                    b = n.to_bytes(INT_SIZE // 8, byteorder='big')
+                    # And output to the file
+                    vf.write(b)
 
 
 
