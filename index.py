@@ -49,6 +49,8 @@ def indexify(a_fn, stoplist, a_print, punc):
     doc_terms = None # New dict every time we start on a new document
     state = NO_DOC   # Where in the document file we're up to (used for tracking closing tags)
                      # Also cuts back on string comparisons
+    docLength = 0
+    docId = ""
 
     with open(a_fn, 'r') as f:
         for line in f:
@@ -77,6 +79,8 @@ def indexify(a_fn, stoplist, a_print, punc):
                 # Reset, ready for next doc
                 doc_terms = None
                 state = NO_DOC
+                # Putting all together, each row in map will consist of Doc ID and its length
+                doc_map.append(docId+" "+str(docLength))
 
             # ========== Term text ==========
             # It's a line to term-ify (term-inate, even :P)
@@ -90,8 +94,9 @@ def indexify(a_fn, stoplist, a_print, punc):
                 t = normalise(line, punctuation=punc, case=False, stops=stoplist)
 
                 for w in t:
+                    # Recording the length of each indexed lexicons
+                    docLength += len(w)
                     # Increase (or add) in-doc frequency for this term
-
                     if w in doc_terms:
                         doc_terms[w] += 1
                     else:
@@ -111,6 +116,8 @@ def indexify(a_fn, stoplist, a_print, punc):
                 doc_terms = {}
                 current_id += 1
                 state = PARSING
+                docLength = 0
+                docId = ""
 
             # Document UID
             elif state == PARSING and check_tag(r_doc_num, line, is_regex=True):
@@ -119,7 +126,7 @@ def indexify(a_fn, stoplist, a_print, punc):
                 # assert len(doc_map) == current_id
 
                 # Add entry to the map (the key is the item's index)
-                doc_map.append(last_match.group(1))
+                docId = last_match.group(1)
 
             # Both these mean start adding terms to the document terms list
             # Headline
