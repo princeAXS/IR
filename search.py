@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-# pylint: disable=C0111,C0103,C0301,C0326
+# pylint: disable=C0111,C0103,C0301,C0326,R1705,W0603
 
 import argparse
 import time
+import sys
 from math import log
 from normalise import normalise
 from minHeap import Heap
@@ -65,7 +66,7 @@ def getDocNum(mapFile):
 def getTermOccurance(term, invertedListFile, lexiconPositionMap, docIDNumMap, BM25):
     # If term not found then simply exits without any output
     if term not in lexiconPositionMap:
-        return
+        return None
 
     offset = int(lexiconPositionMap[term])
 
@@ -114,15 +115,16 @@ def getTermOccurance(term, invertedListFile, lexiconPositionMap, docIDNumMap, BM
 
             listLength -= 1
 
-        if not BM25:
+        if BM25:
+            return None # No return required for BM25 - all results stored in docStoreMap
+        else: # phrase search
             # Return dict of occurances (doc id -> [term position])
             return doc_occs
 
 
 
 # Usage: ./search.py <lexicon> <invlists> <map> <queryterm 1> [... <queryterm N>]
-if __name__ == '__main__':
-    start_time = time.time()
+def main(s_args):
     try:
         parser = argparse.ArgumentParser()
         ranker = parser.add_mutually_exclusive_group()
@@ -144,15 +146,12 @@ if __name__ == '__main__':
         parser.add_argument('-s', '--stoplist', type=str,
                             help='A path to a file containing a list of stopwords')
         parser.add_argument('query', help='List of query terms', nargs='+')
-        args = parser.parse_args()
+        args = parser.parse_args(s_args)
 
         # Reading appropriate files into memory
         lexicons = getLexicon(args.lexicon)
         docMap = getDocNum(args.map)
         stoplist = open_stoplist(args.stoplist)
-
-        numOfResult = args.numresults
-        querylabel = args.querylabel
 
         # Normalizing query terms (assuming probable paramaters when indexing)
         termList = normalise(' '.join(args.query), punctuation=r'[^a-z0-9\ ]+', case=True, stops=stoplist)
@@ -163,86 +162,106 @@ if __name__ == '__main__':
         # Check phrase-search first, because BM25 will be True by default
 
         if args.phrase_search:
-            big_list = [] # [term_num -> {doc_id: [location]}]
-            chicken_dinners = [] # Winning documents (and their in-doc phrase frequency)
-
-            for inputTerm in termList:
-                oc = getTermOccurance(inputTerm, args.invlists, lexicons, docMap, BM25=False)
-                big_list.append(oc)
-
-            # Checks for having some non-empty terms to peruse
-            if big_list and big_list[0] and None not in big_list:
-
-                # Set intersection of the keys - finds only the documents that contain all terms
-                matches = big_list[0].keys()
-                for d in big_list:
-                    matches = matches & d.keys()
-
-                for d in matches: # Calculate validity on a per-document basis
-                    for i in range(1, len(termList)): # Check each term (starting at the second one)
-                        c_locs = big_list[i][d]     # Compare the location of each term to the locations
-                        p_locs = big_list[i - 1][d] # of the previous term - they should be offset by 1
-
-                        new_locs = list(c_locs) # Store the location of terms which are valid
-                        # (that is, occure directly in front of a chain of the previous terms)
-
-                        for j in c_locs:
-                            if (j - 1) not in p_locs: # Does not occur after an instance of the previous term
-                                new_locs.remove(j) # Remove from the list to compare against for the next term
-
-                        big_list[i][d] = new_locs # Store the new list for the next term's comparisons
-
-                    if big_list[-1][d]: # This document is validated - store for output
-                        chicken_dinners.append( (d, len(big_list[-1][d])) )
-            else:
-                # No documents matched at all
-                pass
-
-            if chicken_dinners:
-                # Following output guidelines from asssignment 1
-                print(' '.join(termList)) # normalised phrase query
-                print(len(chicken_dinners)) # phrase frequency
-                for doc in chicken_dinners:
-                    print('{} {}'.format(docMap[doc[0]][0], doc[1])) # Documents and num occurances
-            else:
-                pass
+            main_phrase(args, termList, lexicons, docMap)
         else: # Defaulting to BM25
-            # Initializing constants
-            N, AL = getNAndAL(docMap)
-            k1 = 1.2
-            b = 0.75
+            main_bm25(args, termList, lexicons, docMap)
 
-            # Processing each query at a time
-            for inputTerm in termList:
-                getTermOccurance(inputTerm, args.invlists, lexicons, docMap, BM25=True)
-
-            # Initializing Min Heap to keep the record of top N results
-            minHeap = Heap()
-
-            # Scanning through HashMap containing documents in which query terms occured and its score for that query
-            # and storing in MinHeap to get top N results
-            for key in docScoreMap:
-                minHeap.push(docScoreMap[key], key)
-                if len(minHeap) > numOfResult:
-                    minHeap.pop()
-
-            finalResult = []
-
-            while True:
-                try:
-                    item = minHeap.next()
-                    finalResult.append((item, docScoreMap[item]))
-                except StopIteration:
-                    break
-            # Displaying the content of Min Heap sorted by BM25 score in descending order
-            i = 1
-            for item in reversed(finalResult):
-                print(querylabel, item[0], i, item[1])
-                i += 1
-
-
-        print("Running time: %d ms" % ((time.time() - start_time) * 1000))
     except OSError as e:
         print('{}\nProgram Exiting'.format(e))
     except IndexError:
         print('Insufficient paramaters for meaningful response') # - Asimov, heh
+
+def main_phrase(args, terms, lexicons, docMap):
+    max_results = args.numresults
+    query_label = args.querylabel
+
+    big_list = [] # [term_num -> {doc_id: [location]}]
+    chicken_dinners = [] # Winning documents (and their in-doc phrase frequency)
+
+    for inputTerm in terms:
+        oc = getTermOccurance(inputTerm, args.invlists, lexicons, docMap, BM25=False)
+        big_list.append(oc)
+
+    # Checks for having some non-empty terms to peruse
+    if big_list and big_list[0] and None not in big_list:
+
+        # Set intersection of the keys - finds only the documents that contain all terms
+        matches = big_list[0].keys()
+        for d in big_list:
+            matches = matches & d.keys()
+
+        for d in matches: # Calculate validity on a per-document basis
+            for i in range(1, len(terms)): # Check each term (starting at the second one)
+                c_locs = big_list[i][d]     # Compare the location of each term to the locations
+                p_locs = big_list[i - 1][d] # of the previous term - they should be offset by 1
+
+                new_locs = list(c_locs) # Store the location of terms which are valid
+                # (that is, occur directly in front of a chain of the previous terms)
+
+                for j in c_locs:
+                    if (j - 1) not in p_locs: # Does not occur after an instance of the previous term
+                        new_locs.remove(j) # Remove from the list to compare against for the next term
+
+                big_list[i][d] = new_locs # Store the new list for the next term's comparisons
+
+            if big_list[-1][d]: # This document is validated - store for output
+                chicken_dinners.append( (d, len(big_list[-1][d])) )
+    else:
+        # No documents matched at all
+        pass
+
+    if chicken_dinners:
+        # Following output guidelines from asssignment 1
+        print(' '.join(terms)) # normalised phrase query
+        print(len(chicken_dinners)) # phrase frequency
+        for doc in chicken_dinners:
+            print('{} {}'.format(docMap[doc[0]][0], doc[1])) # Documents and num occurances
+    else:
+        pass
+
+def main_bm25(args, terms, lexicons, docMap):
+    # Initializing constants
+    global AL, N, k1, b
+    N, AL = getNAndAL(docMap)
+    k1 = 1.2
+    b = 0.75
+
+
+    numOfResult = args.numresults
+    querylabel = args.querylabel
+
+    # Processing each query at a time
+    for inputTerm in terms:
+        getTermOccurance(inputTerm, args.invlists, lexicons, docMap, BM25=True)
+
+    # Initializing Min Heap to keep the record of top N results
+    minHeap = Heap()
+
+    # Scanning through HashMap containing documents in which query terms occured and its score for that query
+    # and storing in MinHeap to get top N results
+    for key in docScoreMap:
+        minHeap.push(docScoreMap[key], key)
+        if len(minHeap) > numOfResult:
+            minHeap.pop()
+
+    finalResult = []
+
+    while True:
+        try:
+            item = minHeap.next()
+            finalResult.append((item, docScoreMap[item]))
+        except StopIteration:
+            break
+
+    # Displaying the content of Min Heap sorted by BM25 score in descending order
+    for i, item in enumerate(reversed(finalResult)):
+        print(querylabel, item[0], i + 1, item[1])
+
+
+
+if __name__ == '__main__':
+    start_time = time.time()
+
+    main(sys.argv[1:])
+
+    print("Running time: %d ms" % ((time.time() - start_time) * 1000))
