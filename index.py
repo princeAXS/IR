@@ -75,7 +75,7 @@ def indexify(a_fn, stoplist, a_print, punc):
                 for w, occs in doc_terms.items():
                     # Append a tuple of the document id and the in-document term
                     # frequency in the lexicon entry for this term
-                    lexicon[w].append( (current_id, len(occs), *occs) )
+                    lexicon[w].append( (current_id, len(occs)) + tuple(occs) )
 
                 # Reset, ready for next doc
                 doc_terms = None

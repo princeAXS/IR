@@ -1,6 +1,14 @@
 #!/usr/bin/env python3
 # pylint: disable=C0111,C0326
 
+######################################
+#                                    #
+# s3550167 - Cary Symes              #
+# Information Retrieval Assignment 2 #
+# Created 2018-05-19                 #
+#                                    #
+######################################
+
 import subprocess
 import os
 
@@ -105,9 +113,9 @@ if __name__ == '__main__':
             with open('{}/{}_phrase'.format(ROOT, qn), 'w') as ph_out:
                 for e in RESULTS_PHRASE[qn]:
                     REL = Q_REL[qn]
-                    ph_out.write('{} {} {}\n'.format(*e, 1 if (e[0] in REL and REL[e[0]]) else 0))
+                    ph_out.write('{} {} {}\n'.format(*(e + (1 if (e[0] in REL and REL[e[0]]) else 0,))))
 
             with open('{}/{}_bm25'.format(ROOT, qn), 'w') as bm_out:
                 for e in RESULTS_BM25[qn]:
                     REL = Q_REL[qn]
-                    bm_out.write('{} {} {}\n'.format(*e, 1 if (e[0] in REL and REL[e[0]]) else 0))
+                    bm_out.write('{} {} {}\n'.format(*(e + (1 if (e[0] in REL and REL[e[0]]) else 0,))))
