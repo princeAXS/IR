@@ -123,7 +123,7 @@ def getTermOccurance(term, invertedListFile, lexiconPositionMap, docIDNumMap, BM
 
 
 
-# Usage: ./search.py <lexicon> <invlists> <map> <queryterm 1> [... <queryterm N>]
+# Usage: ./search.py <ranker> <label> <#results> <lexicon> <invlists> <map> <stoplist> <queryterms*>
 def main(s_args):
     try:
         parser = argparse.ArgumentParser()
@@ -136,13 +136,13 @@ def main(s_args):
         parser.add_argument('-q', '--querylabel', type=int,
                             help='An integer that identiﬁes the current query')
         parser.add_argument('-n', '--numresults', type=int,
-                            help='An integer number specifying the number of top-ranked documents that should be returned as an answer')
+                            help='An integer number specifying the number of documents that should be returned')
         parser.add_argument('-l', '--lexicon', type=str,
                             help='A path to a file containing a list of lexicons')
         parser.add_argument('-i', '--invlists', type=str,
-                            help='A path to a Inverted list file')
+                            help='A path to an inverted list file')
         parser.add_argument('-m', '--map', type=str,
-                            help='A path to a file containing a mapping table from internal document numbers to actual document identiﬁers')
+                            help='A path to a file containing a mapping table')
         parser.add_argument('-s', '--stoplist', type=str,
                             help='A path to a file containing a list of stopwords')
         parser.add_argument('query', help='List of query terms', nargs='+')
@@ -171,8 +171,9 @@ def main(s_args):
     except IndexError:
         print('Insufficient paramaters for meaningful response') # - Asimov, heh
 
+
+
 def main_phrase(args, terms, lexicons, docMap):
-    max_results = args.numresults
     query_label = args.querylabel
 
     big_list = [] # [term_num -> {doc_id: [location]}]
@@ -211,11 +212,14 @@ def main_phrase(args, terms, lexicons, docMap):
         pass
 
     if chicken_dinners:
-        # Following output guidelines from asssignment 1
+        chicken_dinners.sort(key=lambda a: a[1], reverse=True) # sort on num occurances because why not
+
+        # Following output guidelines from asssignment 1 plus query label
         print(' '.join(terms)) # normalised phrase query
         print(len(chicken_dinners)) # phrase frequency
+
         for doc in chicken_dinners:
-            print('{} {}'.format(docMap[doc[0]][0], doc[1])) # Documents and num occurances
+            print('{} {} {}'.format(query_label, docMap[doc[0]][0], doc[1])) # Documents and num occurances
     else:
         pass
 
