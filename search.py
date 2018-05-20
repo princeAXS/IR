@@ -214,10 +214,7 @@ def main_phrase(args, terms, lexicons, docMap):
     if chicken_dinners:
         chicken_dinners.sort(key=lambda a: a[1], reverse=True) # sort on num occurances because why not
 
-        # Following output guidelines from asssignment 1 plus query label
-        print(' '.join(terms)) # normalised phrase query
-        print(len(chicken_dinners)) # phrase frequency
-
+        # Following output guidelines for the ranked retrieval section
         for doc in chicken_dinners:
             print('{} {} {}'.format(query_label, docMap[doc[0]][0], doc[1])) # Documents and num occurances
     else:

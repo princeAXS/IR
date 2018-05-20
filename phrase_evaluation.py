@@ -46,8 +46,6 @@ if __name__ == '__main__':
     for qn, t in Q_TOPICS.items():
         print(qn, ' '.join(t))
 
-
-
         # Perform BM25 searches
         pbm = 'python3 search.py --BM25 -q {} -n {} -l lexicon -i invlists -m map -s stoplist'
         pbm = pbm.format(qn, BM25_SIZE).split() + t
@@ -77,11 +75,7 @@ if __name__ == '__main__':
         pph = pph.format(qn).split() + t
 
         rph = subprocess.check_output(pph).decode('utf-8').splitlines()
-
-        if len(rph) > 3: # Trim unnecessary data
-            rph = rph[2:-1] # Remove query, num results and time taken
-        else:
-            rph = [] # No results found
+        rph = rph[:-1] # Trim timing data
 
         data = []
         for e in rph:
