@@ -246,9 +246,10 @@ def main_bm25(args, terms, lexicons, docMap):
     # Scanning through HashMap containing documents in which query terms occured and its score for that query
     # and storing in MinHeap to get top N results
     for key in docScoreMap:
-        minHeap.push(docScoreMap[key], key)
-        if len(minHeap) > numOfResult:
-            minHeap.pop()
+        if len(minHeap) == numOfResult:
+            minHeap.push(docScoreMap[key], key, replace=True)
+        else:
+            minHeap.push(docScoreMap[key], key)
 
     finalResult = []
 

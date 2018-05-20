@@ -2,7 +2,7 @@ import heapq
 
 # Heap wrapper sourced from
 # http://joernhees.de/blog/2010/07/19/min-heap-in-python/
-# Allows doing neat stuff with python's inbuilt heap
+# Minor modifications made for this IR assignment
 
 class Heap(object):
     """ A neat min-heap wrapper which allows storing items by priority
@@ -16,12 +16,18 @@ class Heap(object):
         """ create a new min-heap. """
         self._heap = []
 
-    def push(self, priority, item):
+    def push(self, priority, item, replace=False):
         """ Push an item with priority into the heap.
             Priority 0 is the highest, which means that such an item will
             be popped first."""
         assert priority >= 0
-        heapq.heappush(self._heap, (priority, item))
+
+        # My little mod
+        if replace and self._heap: # Remove smallest element simultaneously
+            if priority > self._heap[0][0]: # Check this isn't going to be the smallest first
+                heapq.heapreplace(self._heap, (priority, item)) # insert, removing _heap[0]
+        else:
+            heapq.heappush(self._heap, (priority, item)) # Otherwise just push (changes heap size)
 
     def pop(self):
         """ Returns the item with lowest priority. """
