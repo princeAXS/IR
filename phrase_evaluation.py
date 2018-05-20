@@ -16,6 +16,7 @@ if __name__ == '__main__':
     Q_TOPICS = {}
     Q_REL = {}
 
+    SRC_ROOT = './'
     ROOT = 'analytics'
 
     RESULTS_BM25   = {}
@@ -26,12 +27,12 @@ if __name__ == '__main__':
 
     STALE = True
 
-    with open('topics', 'r') as ft:
+    with open(SRC_ROOT + 'topics', 'r') as ft:
         for topic in ft:
             topic = topic.split()
             Q_TOPICS[topic[0]] = topic[1:]
 
-    with open('qrels', 'r') as fr:
+    with open(SRC_ROOT + 'qrels', 'r') as fr:
         for rel in fr:
             rel = rel.split()
 

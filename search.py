@@ -127,26 +127,32 @@ def getTermOccurance(term, invertedListFile, lexiconPositionMap, docIDNumMap, BM
 def main(s_args):
     try:
         parser = argparse.ArgumentParser()
-        ranker = parser.add_mutually_exclusive_group()
-        ranker.add_argument('-BM25', '--BM25', action='store_true', default=True,
+        ranker = parser.add_mutually_exclusive_group(required=True)
+        ranker.add_argument('-BM25', '--BM25', action='store_true', default=False,
                             help='Uses BM25 similiarity function (default)')
         ranker.add_argument('--phrase-search', action='store_true', default=False,
                             help='Shows results that match the exact phrase searched')
 
-        parser.add_argument('-q', '--querylabel', type=int,
+        parser.add_argument('-q', '--querylabel', type=int, required=True,
                             help='An integer that identiﬁes the current query')
         parser.add_argument('-n', '--numresults', type=int,
                             help='An integer number specifying the number of documents that should be returned')
-        parser.add_argument('-l', '--lexicon', type=str,
+        parser.add_argument('-l', '--lexicon', type=str, required=True,
                             help='A path to a file containing a list of lexicons')
-        parser.add_argument('-i', '--invlists', type=str,
+        parser.add_argument('-i', '--invlists', type=str, required=True,
                             help='A path to an inverted list file')
-        parser.add_argument('-m', '--map', type=str,
+        parser.add_argument('-m', '--map', type=str, required=True,
                             help='A path to a file containing a mapping table')
         parser.add_argument('-s', '--stoplist', type=str,
                             help='A path to a file containing a list of stopwords')
         parser.add_argument('query', help='List of query terms', nargs='+')
         args = parser.parse_args(s_args)
+
+        # Abort if we're missing mutually inclusive parameters
+        if (args.BM25 and args.numresults is None):
+            parser.error('BM25 queries require a number of results to output. Specify with -n / --numresults')
+        elif (args.phrase_search and args.numresults is not None):
+            parser.error('Phrase queries do not require a limit on output results. Remove the -n / --numresults argument')
 
         # Reading appropriate files into memory
         lexicons = getLexicon(args.lexicon)
@@ -159,12 +165,11 @@ def main(s_args):
 
 
         # Operate differently depending on which ranking method is being used
-        # Check phrase-search first, because BM25 will be True by default
 
-        if args.phrase_search:
-            main_phrase(args, termList, lexicons, docMap)
-        else: # Defaulting to BM25
+        if args.BM25: # BM25
             main_bm25(args, termList, lexicons, docMap)
+        elif args.phrase_search: # phrase search
+            main_phrase(args, termList, lexicons, docMap)
 
     except OSError as e:
         print('{}\nProgram Exiting'.format(e))
