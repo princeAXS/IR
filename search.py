@@ -12,22 +12,11 @@ from minHeap import Heap
 docScoreMap = {}
 
 # Constants for BM25 function
-AL, N, k1, b = 0, 0, 0, 0
-
-def calculateK(Ld):
-    # Calculates K, a component of BM25 function
-    return k1*((1-b)+((b*Ld)/AL))
+N, k1, b = 0, 0, 0
 
 def calculateBM25(ft, K, fdt):
     # Calculates BM25 function score
     return (log((N-ft+0.5)/(ft+0.5)))*(((k1+1)*fdt)/(K+fdt))
-
-def getNAndAL(dMap):
-    # Iterate through each row in map file to calculate average doc length i.e AL
-    total = 0
-    for entry in dMap:
-        total += int(entry[1])
-    return (len(dMap), int(total/len(dMap)))
 
 def open_stoplist(sfn):
     # Opens a stoplist stored on disk and returns it as a set of strings
@@ -53,13 +42,13 @@ def getLexicon(lexiconFile):
     return lexiconPositionMap
 
 def getDocNum(mapFile):
-    # Reads docId, docNum and docLength from memory and make hash map of it
+    # Reads docId, [docNum and docWeight] from storage and return a list of them
     docIDNumMap = []
 
     with open(mapFile, 'r') as f:
         for line in f:
             line = line.rstrip().split(" ")
-            docIDNumMap.append([line[1], line[2]])
+            docIDNumMap.append([line[1], float(line[2])])
 
     return docIDNumMap
 
@@ -95,7 +84,7 @@ def getTermOccurance(term, invertedListFile, lexiconPositionMap, docIDNumMap, BM
             fdt = read()
 
             if BM25:
-                K = calculateK(int(docRow[1]))
+                K = docRow[1]
                 score = float(str(round(calculateBM25(ft, K, fdt), 4)))
 
                 if docId in docScoreMap:
@@ -227,8 +216,8 @@ def main_phrase(args, terms, lexicons, docMap):
 
 def main_bm25(args, terms, lexicons, docMap):
     # Initializing constants
-    global AL, N, k1, b
-    N, AL = getNAndAL(docMap)
+    global N, k1, b
+    N = len(docMap)
     k1 = 1.2
     b = 0.75
 

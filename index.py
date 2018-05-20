@@ -80,8 +80,9 @@ def indexify(a_fn, stoplist, a_print, punc):
                 # Reset, ready for next doc
                 doc_terms = None
                 state = NO_DOC
-                # Each row in the map will consist of its doc ID and its length
-                doc_map.append(doc_id + " " + str(doc_len))
+                # Each row in the map will consist of its doc ID and its document weight
+                #                                                   (to be calculated at write time)
+                doc_map.append( (doc_id, doc_len) )
 
             # ========== Term text ==========
             # It's a line to term-ify (term-inate, even :P)
@@ -182,12 +183,17 @@ def open_stoplist(sfn):
 Writes the 'map' file to disk
 Each line has two items
 1. document id
-2. <DOCNO> tag contents
+2. string with <DOCNO> tag contents and document weight
 """
 def write_map(omap, ofn):
+    k1 = 1.2
+    b = 0.75
+    AL = sum(a[1] for a in omap) / len(omap)
+
     with open(ofn, 'w') as of:
-        for (did, dno) in enumerate(omap):
-            of.write('{} {}\n'.format(did, dno))
+        for (did, ddata) in enumerate(omap):
+            K = calculateK(k1, b, ddata[1], AL)
+            of.write('{} {}\n'.format(did, '{} {}'.format(ddata[0], K)))
 
 
 """
@@ -221,6 +227,24 @@ def write_lexicon_invs(lss, lfn, ifn):
                     b = n.to_bytes(INT_SIZE // 8, byteorder='big')
                     # And output to the file
                     vf.write(b)
+
+"""
+Calculates K, the document weight component of BM25 function
+k1, b - abritrary constants
+Ld - document length
+AL - average length
+"""
+def calculateK(k1, b, Ld, AL):
+    return k1*((1-b)+((b*Ld)/AL))
+
+"""
+Iterate through each row in map file to calculate average doc length i.e AL
+"""
+def getAL(dMap):
+    total = 0
+    for entry in dMap:
+        total += int(entry[1])
+    return int(total/len(dMap))
 
 
 
