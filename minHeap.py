@@ -1,5 +1,9 @@
 import heapq
 
+# Heap wrapper sourced from
+# http://joernhees.de/blog/2010/07/19/min-heap-in-python/
+# Allows doing neat stuff with python's inbuilt heap
+
 class Heap(object):
     """ A neat min-heap wrapper which allows storing items by priority
         and get the lowest item out first (pop()).
